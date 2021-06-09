@@ -12,6 +12,7 @@ import {
   ImageListItemBar,
   Link,
   MenuItem,
+  Pagination,
   Stack,
   TextField,
   Theme,
@@ -25,32 +26,53 @@ const MovieListPage: NextPage<{}> = () => {
 
   const { data: movies } = useSWR<{
     Search: Movie[];
+    totalResults: string;
   }>(() => {
-    const { s, type, y } = router.query;
-
-    if (!s) {
+    if (!router.query.s) {
       return null;
     }
 
-    return `/?${querystring.stringify({
-      s,
-      type,
-      y,
-    })}`;
+    return `/?${querystring.stringify(router.query)}`;
   });
 
   const [form, setForm] = useState({
     s: "",
     type: "",
     y: "",
+    page: 1,
   });
 
   useEffect(() => {
     setForm({
       ...form,
       ...router.query,
+      page: Number(router.query.page ?? 1),
     });
   }, [router]);
+
+  const search = (query?: Partial<typeof form>) => {
+    router.push({
+      pathname: router.pathname,
+      query: {
+        ...Object.entries({
+          ...form,
+          ...query,
+        }).reduce(
+          (acc, [key, val]) => ({
+            ...acc,
+            ...(val
+              ? {
+                  [key]: val,
+                }
+              : {}),
+          }),
+          {}
+        ),
+      },
+    });
+  };
+
+  const count = Number((Number(movies?.totalResults ?? 0) / 10).toFixed());
 
   const theme = useTheme();
   const smDown = useMediaQuery<Theme>((theme) => theme.breakpoints.down("sm"));
@@ -130,22 +152,7 @@ const MovieListPage: NextPage<{}> = () => {
           <Button
             variant="contained"
             onClick={() => {
-              router.replace({
-                pathname: router.pathname,
-                query: {
-                  ...Object.entries(form).reduce(
-                    (acc, [key, val]) => ({
-                      ...acc,
-                      ...(val
-                        ? {
-                            [key]: val,
-                          }
-                        : {}),
-                    }),
-                    {}
-                  ),
-                },
-              });
+              search();
             }}
             disabled={!form.s}
           >
@@ -161,7 +168,13 @@ const MovieListPage: NextPage<{}> = () => {
             <NextLink key={item.imdbID} href={`/${item.imdbID}`} passHref>
               <Link>
                 <ImageListItem>
-                  <img src={item.Poster} />
+                  <img
+                    src={
+                      item.Poster !== "N/A"
+                        ? item.Poster
+                        : `https://picsum.photos/300/450?random=${item.imdbID}`
+                    }
+                  />
                   <ImageListItemBar title={item.Title} subtitle={item.Year} />
                   <Chip
                     label={item.Type}
@@ -182,6 +195,20 @@ const MovieListPage: NextPage<{}> = () => {
             </NextLink>
           ))}
         </ImageList>
+        {count > 0 && (
+          <Stack alignItems="center">
+            <Pagination
+              page={form.page}
+              onChange={(event, page) => {
+                search({
+                  page,
+                });
+              }}
+              count={count}
+              color="secondary"
+            />
+          </Stack>
+        )}
       </Stack>
     </>
   );

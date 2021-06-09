@@ -113,7 +113,11 @@ const MovieDetailPage: NextPage<{}> = () => {
           </Box>
           <CardMedia
             component="img"
-            src={movie?.Poster}
+            src={
+              movie?.Poster !== "N/A"
+                ? movie?.Poster
+                : `https://picsum.photos/300/450?random=${movie?.imdbID}`
+            }
             style={{
               width: "auto",
             }}
